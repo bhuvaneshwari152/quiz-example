@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="quizApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Application</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background-color: #f4f4f4; 
+            color: #333; 
+            margin: 0;
+        }
+        h1 {
+            text-align: center; 
+            color: #007BFF;
+            margin-bottom: 20px;
+        }
+        .category-list, .answer-list {
+            list-style-type: none; 
+            padding: 0; 
+            text-align: center;
+        }
+        li {
+            margin: 10px 0; 
+            display: inline-block; 
+            width: 200px;
+        }
+        button {
+            padding: 10px; 
+            background-color: #007BFF; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        .quiz-container {
+            max-width: 600px; 
+            margin: auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .result {
+            text-align: center;
+        }
+        .timer {
+            font-weight: bold; 
+            color: red;
+        }
+        .next-button {
+            background-color: #28a745; /* Green color for Next button */
+        }
+        .next-button:hover {
+            background-color: #218838; /* Darker green on hover */
+        }
+        .final-answers {
+            text-align: left; /* Align answers to the left */
+            margin-top: 20px;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        .completion-message {
+            font-weight: bold;
+            color: #007BFF;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body ng-controller="QuizController">
+    <h1>Quiz Application</h1>
+    <div class="quiz-container">
+        <div ng-if="!selectedCategory && !quizCompleted">
+            <h2>Select a Category</h2>
+            <ul class="category-list">
+                <li ng-repeat="category in categories" ng-click="startQuiz(category)">
+                    {{ category }}
+                </li>
+            </ul>
+        </div>
+        <div ng-if="selectedCategory && !quizCompleted">
+            <h2>Category: {{ selectedCategory }}</h2>
+            <h3>Time Left: <span class="timer">{{ timer }}</span> seconds</h3>
+            <h4>{{ questions[currentQuestionIndex].question }}</h4>
+            <ul class="answer-list">
+                <li ng-repeat="answer in questions[currentQuestionIndex].answers">
+                    <button ng-click="answerQuestion(answer)">{{ answer.text }}</button>
+                </li>
+            </ul>
+        </div>
+        <div ng-if="quizCompleted" class="result">
+            <h2>Quiz Completed!</h2>
+            <h3>Your Score: {{ getFinalScore() }}</h3>
+            <div class="final-answers">
+                <h4>Final Answers:</h4>
+                <div ng-repeat="question in questions">
+                    <p><strong>Question: {{ question.question }}</strong></p>
+                    <p>Your Answer: <span ng-if="userAnswers[$index]">{{ userAnswers[$index].text }}</span></p>
+                    <p>Correct Answer: <span ng-if="question.answers.find(a => a.correct)">{{ question.answers.find(a => a.correct).text }}</span></p>
+                    <p ng-if="userAnswers[$index] && userAnswers[$index].correct" class="correct">Your answer is correct!</p>
+                    <p ng-if="userAnswers[$index] && !userAnswers[$index].correct" class="incorrect">Your answer is incorrect.</p>
+                    <hr/>
+                </div>
+            </div>
+            <button class="next-button" ng-click="nextCategory()">Next Category</button>
+            <button ng-click="restartQuiz()">Restart Quiz</button>
+        </div>
+        <div ng-if="allCategoriesCompleted" class="completion-message">
+            <h2>Congratulations! You have completed all categories!</h2>
+            <p>Thank you for participating in the quiz!</p>
+        </div>
+    </div>
+    <script>
+        angular.module('quizApp', [])
+        .controller('QuizController', ['$scope', '$timeout', function($scope, $timeout) {
+            $scope.categories = ['Science', 'History', 'Math'];
+            $scope.selectedCategory = null;
+            $scope.questions = [];
+            $scope.currentQuestionIndex = 0;
+            $scope.score = 0;
+            $scope.timer = 30;
+            $scope.quizCompleted = false;
+            $scope.allCategoriesCompleted = false; // Track if all categories are completed
+            $scope.userAnswers = []; // Store user's answers
+            const quizData = {
+                Science: [
+                    { question: "What is the chemical symbol for water?", answers: [{ text: "H2O", correct: true }, { text: "O2", correct: false }, { text: "CO2", correct: false }, { text: "He", correct: false }] },
+                    { question: "What planet is known as the Red Planet?", answers: [{ text: "Earth", correct: false }, { text: "Mars", correct: true }, { text: "Jupiter", correct: false }, { text: "Saturn", correct: false }] },
+                    { question: "What gas do plants absorb from the atmosphere?", answers: [{ text: "Oxygen", correct: false }, { text: "Carbon Dioxide", correct: true }, { text: "Nitrogen", correct: false }, { text: "Hydrogen", correct: false }] },
+                    { question: "What is the powerhouse of the cell?", answers: [{ text: "Nucleus", correct: false }, { text: "Mitochondria", correct: true }, { text: "Ribosome", correct: false }, { text: "Chloroplast", correct: false }] },
+                    { question: "Which planet is closest to the Sun?", answers: [{ text: "Venus", correct: false }, { text: "Earth", correct: false }, { text: "Mercury", correct: true }, { text: "Mars", correct: false }] }
+                ],
+                History: [
+                    { question: "Who was the first President of the United States?", answers: [{ text: "Abraham Lincoln", correct: false }, { text: "George Washington", correct: true }, { text: "Thomas Jefferson", correct: false }, { text: "John Adams", correct: false }] },
+                    { question: "In what year did World War II end?", answers: [{ text: "1945", correct: true }, { text: "1944", correct: false }, { text: "1939", correct: false }, { text: "1950", correct: false }] },
+                    { question: "Which ancient civilization built the pyramids?", answers: [{ text: "Greek", correct: false }, { text: "Roman", correct: false }, { text: "Egyptian", correct: true }, { text: "Mayan", correct: false }] },
+                    { question: "What was the main cause of the Cold War?", answers: [{ text: "Economic Rivalry", correct: true }, { text: "Religious Conflict", correct: false }, { text: "Territorial Disputes", correct: false }, { text: "Colonization", correct: false }] },
+                    { question: "Who was the first female Prime Minister of the United Kingdom?", answers: [{ text: "Margaret Thatcher", correct: true }, { text: "Theresa May", correct: false }, { text: "Angela Merkel", correct: false }, { text: "Indira Gandhi", correct: false }] }
+                ],
+                Math: [
+                    { question: "What is the value of pi to two decimal places?", answers: [{ text: "3.14", correct: true }, { text: "3.15", correct: false }, { text: "3.16", correct: false }, { text: "3.13", correct: false }] },
+                    { question: "What is 12 x 12?", answers: [{ text: "144", correct: true }, { text: "124", correct: false }, { text: "132", correct: false }, { text: "156", correct: false }] },
+                    { question: "What is the square root of 144?", answers: [{ text: "12", correct: true }, { text: "10", correct: false }, { text: "14", correct: false }, { text: "16", correct: false }] },
+                    { question: "What is 15% of 200?", answers: [{ text: "30", correct: true }, { text: "25", correct: false }, { text: "15", correct: false }, { text: "40", correct: false }] }
+                ]
+            };
+            $scope.startQuiz = function(category) {
+                $scope.selectedCategory = category;
+                $scope.questions = quizData[category];
+                $scope.currentQuestionIndex = 0;
+                $scope.score = 0;
+                $scope.timer = 30;
+                $scope.quizCompleted = false;
+                $scope.userAnswers = []; // Reset user answers
+                startTimer();
+            };
+            $scope.answerQuestion = function(answer) {
+                if (!$scope.quizCompleted) {
+                    const question = $scope.questions[$scope.currentQuestionIndex];
+                    $scope.userAnswers[$scope.currentQuestionIndex] = { text: answer.text, correct: answer.correct };
+                    if (answer.correct) {
+                        $scope.score++;
+                    }
+                    if ($scope.currentQuestionIndex < $scope.questions.length - 1) {
+                        $scope.currentQuestionIndex++;
+                    } else {
+                        $scope.quizCompleted = true;
+                        $scope.checkAllCategoriesCompleted(); // Check if all categories are completed
+                    }
+                }
+            };
+            function startTimer() {
+                $scope.timer = 30;
+                const interval = setInterval(function() {
+                    $scope.timer--;
+                    if ($scope.timer <= 0) {
+                        clearInterval(interval);
+                        $scope.quizCompleted = true;
+                        $scope.checkAllCategoriesCompleted(); // Check if all categories are completed
+                        $scope.$apply();
+                    }
+                }, 1000);
+            }
+            $scope.getFinalScore = function() {
+                return $scope.score + ' out of ' + $scope.questions.length;
+            };
+            $scope.nextCategory = function() {
+                const index = $scope.categories.indexOf($scope.selectedCategory);
+                if (index < $scope.categories.length - 1) {
+                    $scope.startQuiz($scope.categories[index + 1]);
+                } else {
+                    $scope.allCategoriesCompleted = true; // Mark as all categories completed
+                }
+            };
+            $scope.restartQuiz = function() {
+                $scope.selectedCategory = null;
+                $scope.quizCompleted = false;
+                $scope.allCategoriesCompleted = false; // Reset the completion flag
+            };
+            $scope.checkAllCategoriesCompleted = function() {
+                const index = $scope.categories.indexOf($scope.selectedCategory);
+                if (index === $scope.categories.length - 1) {
+                    $scope.allCategoriesCompleted = true; // All categories have been completed
+                }
+            };
+        }]);
+    </script>
+</body>
+</html>
+
